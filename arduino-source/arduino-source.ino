@@ -14,6 +14,12 @@ int status = WL_IDLE_STATUS;
 char ssid[] = SECRET_SSID;
 char pass[] = SECRET_PASS;
 
+// Water Level Sensor
+int in_pin_low = 7;
+int in_pin_high = 8;
+int low_val;
+int high_val;
+
 void setup() {
   Serial.begin(57600);
 
@@ -40,6 +46,33 @@ void setup() {
 void loop() {
   Serial.println("Loop!");
 
+
+  low_val = digitalRead(in_pin_low);   // read the input pin
+  high_val = digitalRead(in_pin_high);   // read the input pin
+  Serial.println("----------------------");
+  Serial.println(low_val);
+  Serial.println(high_val);
+  if (low_val == 0) {
+    Serial.println("The water level is LOW!");
+  }
+  else if (low_val == 1 && high_val == 0) {
+    Serial.println("The water level is in GOOD range!");
+  }
+  else if (high_val == 1) { 
+    Serial.println("The water level is HIGH enough!");
+  }
+  else {
+    Serial.println("There is an issue");
+  }
+
+
+
+  
+  Serial.println("----------------------");
+  delay(50);
+}
+
+int post_data() {
   client.sendHeader("Cache-Control", "no-cache");
   
   // send the POST request
@@ -62,8 +95,5 @@ void loop() {
   String keyValue = obj[String("data")][String("mykey")];
   Serial.print("keyValue: ");
   Serial.println(keyValue);
-
-  
-  Serial.println("----------------------");
-  delay(30000);
+  return statusCode;
 }
