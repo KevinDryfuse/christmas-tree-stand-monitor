@@ -20,8 +20,36 @@ int in_pin_high = 8;
 int low_val;
 int high_val;
 
+// LED Panel
+int out_pin_blue = 5;
+int out_pin_green = 4;
+int out_pin_red = 3;
+
 void setup() {
   Serial.begin(57600);
+
+  pinMode(out_pin_red, OUTPUT);
+  pinMode(out_pin_green, OUTPUT);
+  pinMode(out_pin_blue, OUTPUT);
+  
+  analogWrite(out_pin_red, 255);
+  analogWrite(out_pin_green, 0);
+  analogWrite(out_pin_blue, 0);
+  delay(500);
+  analogWrite(out_pin_red, 0);
+  analogWrite(out_pin_green, 255);
+  analogWrite(out_pin_blue, 0);
+  delay(500);
+  analogWrite(out_pin_red, 0);
+  analogWrite(out_pin_green, 0);
+  analogWrite(out_pin_blue, 255);
+  delay(500);
+  analogWrite(out_pin_red, 0);
+  analogWrite(out_pin_green, 0);
+  analogWrite(out_pin_blue, 0);
+  
+  pinMode(in_pin_low, INPUT);
+  pinMode(in_pin_high, INPUT);
 
   while (!Serial);
   while ( status != WL_CONNECTED) {
@@ -46,7 +74,6 @@ void setup() {
 void loop() {
   Serial.println("Loop!");
 
-
   low_val = digitalRead(in_pin_low);   // read the input pin
   high_val = digitalRead(in_pin_high);   // read the input pin
   Serial.println("----------------------");
@@ -54,19 +81,25 @@ void loop() {
   Serial.println(high_val);
   if (low_val == 0) {
     Serial.println("The water level is LOW!");
+    analogWrite(out_pin_red, 255);
+    analogWrite(out_pin_green, 0);
+    analogWrite(out_pin_blue, 0);
   }
   else if (low_val == 1 && high_val == 0) {
     Serial.println("The water level is in GOOD range!");
+    analogWrite(out_pin_red, 0);
+    analogWrite(out_pin_green, 255);
+    analogWrite(out_pin_blue, 0);
   }
   else if (high_val == 1) { 
     Serial.println("The water level is HIGH enough!");
+    analogWrite(out_pin_red, 255);
+    analogWrite(out_pin_green, 255);
+    analogWrite(out_pin_blue, 255);
   }
   else {
     Serial.println("There is an issue");
   }
-
-
-
   
   Serial.println("----------------------");
   delay(50);
