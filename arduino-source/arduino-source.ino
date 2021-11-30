@@ -13,6 +13,7 @@ int wifiStatus = WL_IDLE_STATUS;
 #include "arduino_secrets.h"
 char ssid[] = SECRET_SSID;
 char pass[] = SECRET_PASS;
+char deviceId[] = DEVICE_ID;
 
 // Water Level Sensor
 const int IN_PIN_LOW = 7;
@@ -25,12 +26,15 @@ const int OUT_PIN_RED = 3;
 const int OUT_PIN_GREEN = 4;
 const int OUT_PIN_BLUE = 5;
 
+// Used to determine if a change happened within the last N seconds
+unsigned long lastEventTime;
+String currentStatus = "";
+
 
 void setup() {
   Serial.begin(57600);
 
   startupColors();
-
 
   while (!Serial);
   while ( wifiStatus != WL_CONNECTED) {
@@ -49,43 +53,83 @@ void setup() {
   Serial.print("SSID: ");
   Serial.println(WiFi.SSID());
   Serial.println("----------------------");
-  
+
   // print the arduino's IP address:
   IPAddress ip = WiFi.localIP();
   Serial.print("IP Address: ");
   Serial.println(ip);
   Serial.println("----------------------");
-  
+
+  Serial.print("Device ID: ");
+  Serial.println(deviceId);
+
+  lastEventTime = millis();
+
 }
 
 void loop() {
 
   low_val = digitalRead(IN_PIN_LOW);   // read the low water level sensor
   high_val = digitalRead(IN_PIN_HIGH);   // read the high water level sensor
-  
-  Serial.print("Low Value: ");
-  Serial.println(low_val);
-  Serial.print("High Value: ");
-  Serial.println(high_val);
-  
+
+  boolean significantEvent = false;
+  String newStatus = "";
+
   if (low_val == 0) {
-    Serial.println("The water level is LOW!");
     setColor(255, 0, 0);
+    newStatus = "LOW";
   }
   else if (low_val == 1 && high_val == 0) {
-    Serial.println("The water level is in GOOD range!");
+    
     setColor(0, 255, 0);
+    newStatus = "GOOD";
   }
   else if (high_val == 1) {
-    Serial.println("The water level is HIGH enough!");
     setColor(255, 255, 255);
+    newStatus = "HIGH";
   }
   else {
     Serial.println("There is an issue");
+    setColor(0, 0, 255);
   }
 
-  Serial.println("----------------------");
+  if (isSignificantEvent(currentStatus, newStatus)) {
+    Serial.println("SIGNIFICANT");
+    Serial.print("Low Value: ");
+    Serial.println(low_val);
+    Serial.print("High Value: ");
+    Serial.println(high_val);
+
+    if (currentStatus == "") {
+      Serial.println("System has been reset!");
+    }
+    else if (newStatus == "LOW") {
+      Serial.println("The water level is in LOW range!");
+    }
+    else if (newStatus == "GOOD") {
+      Serial.println("The water level is in GOOD range!");
+    }
+    else if (newStatus == "HIGH") {
+      Serial.println("The water level is in HIGH range!");
+    } 
+    Serial.println("---------------------- " + String (millis()) + " - " + String (lastEventTime));
+
+    // This is where we would POST to our endpoint
+    
+    currentStatus = newStatus;
+  }
+
   delay(50);
+}
+
+
+boolean isSignificantEvent(String currentStatus, String newStatus) {
+  boolean significantEvent = false;
+  if ((currentStatus != newStatus & (millis() - lastEventTime > 30000)) | (currentStatus == "")) {
+    significantEvent = true;
+    lastEventTime = millis();
+  }
+  return significantEvent;
 }
 
 
