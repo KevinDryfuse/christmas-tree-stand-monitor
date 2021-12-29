@@ -1,19 +1,19 @@
 #include <ArduinoJson.h>
-
-#include <WiFiNINA.h>
-WiFiClient wifi;
-
-#include <ArduinoHttpClient.h>
-char serverAddress[] = "postman-echo.com";  // server address
-int port = 80;
-
-HttpClient client = HttpClient(wifi, serverAddress, port);
-int wifiStatus = WL_IDLE_STATUS;
-
 #include "arduino_secrets.h"
 char ssid[] = SECRET_SSID;
 char pass[] = SECRET_PASS;
 char deviceId[] = DEVICE_ID;
+
+#include <SPI.h>
+#include <WiFiNINA.h>
+WiFiClient wifi;
+
+#include <ArduinoHttpClient.h>
+char serverAddress[] = "christmas-tree-stand-prd.herokuapp.com";  // server address
+int port = 80;
+
+HttpClient client = HttpClient(wifi, serverAddress, port);
+int wifiStatus = WL_IDLE_STATUS;
 
 // Water Level Sensor
 const int IN_PIN_LOW = 7;
@@ -35,16 +35,43 @@ void setup() {
   Serial.begin(57600);
 
   startupColors();
-
-  while (!Serial);
+  setColor(255, 255, 0);
+  
   while ( wifiStatus != WL_CONNECTED) {
-    setColor(255, 255, 0);
+    
     Serial.print("Attempting to connect to Network named: ");
     Serial.println(ssid);     // print the network name (SSID);
     Serial.println(pass);     // print the network name (SSID);
-    delay(1000);
+    delay(2000);
     // Connect to WPA/WPA2 network:
     wifiStatus = WiFi.begin(ssid, pass);
+    Serial.print(wifiStatus);
+
+    if (WiFi.status() == WL_CONNECTED) {
+      Serial.println("WL_CONNECTED");
+    }
+    if (WiFi.status() == WL_NO_SHIELD) {
+      Serial.println("WL_NO_SHIELD");
+    }
+    if (WiFi.status() == WL_IDLE_STATUS) {
+      Serial.println("WL_IDLE_STATUS");
+    }
+    if (WiFi.status() == WL_NO_SSID_AVAIL) {
+      Serial.println("WL_NO_SSID_AVAIL");
+    }
+    if (WiFi.status() == WL_SCAN_COMPLETED) {
+      Serial.println("WL_SCAN_COMPLETED");
+    }
+    if (WiFi.status() == WL_CONNECT_FAILED) {
+      Serial.println("WL_CONNECT_FAILED");
+    }
+    if (WiFi.status() == WL_CONNECTION_LOST) {
+      Serial.println("WL_CONNECTION_LOST");
+    }
+    if (WiFi.status() == WL_DISCONNECTED) {
+      Serial.println("WL_DISCONNECTED");
+    }
+    
   }
   setColor(0, 0, 255);
   delay(2000);
@@ -77,16 +104,15 @@ void loop() {
 
   if (low_val == 0) {
     setColor(255, 0, 0);
-    newStatus = "LOW";
+    newStatus = "low";
   }
   else if (low_val == 1 && high_val == 0) {
-    
     setColor(0, 255, 0);
-    newStatus = "GOOD";
+    newStatus = "acceptable";
   }
   else if (high_val == 1) {
     setColor(255, 255, 255);
-    newStatus = "HIGH";
+    newStatus = "full";
   }
   else {
     Serial.println("There is an issue");
@@ -102,21 +128,23 @@ void loop() {
 
     if (currentStatus == "") {
       Serial.println("System has been reset!");
+      newStatus = "reset";
     }
-    else if (newStatus == "LOW") {
-      Serial.println("The water level is in LOW range!");
+    else if (newStatus == "low") {
+      Serial.println("The water level is in low range!");
     }
-    else if (newStatus == "GOOD") {
-      Serial.println("The water level is in GOOD range!");
+    else if (newStatus == "acceptable") {
+      Serial.println("The water level is in acceptable range!");
     }
-    else if (newStatus == "HIGH") {
-      Serial.println("The water level is in HIGH range!");
+    else if (newStatus == "full") {
+      Serial.println("The water level is in full range!");
     } 
     Serial.println("---------------------- " + String (millis()) + " - " + String (lastEventTime));
-
-    // This is where we would POST to our endpoint
     
     currentStatus = newStatus;
+
+    post_data(currentStatus);
+    
   }
 
   delay(50);
@@ -154,15 +182,14 @@ void startupColors() {
 }
 
 
-int post_data() {
+int post_data(String currentStatus) {
   client.sendHeader("Cache-Control", "no-cache");
 
   // send the POST request
   Serial.println("making post request");
 
-  String postData = "{\"mykey\":\"myvalue\"}";
-
-  client.post("/post", "application/json", postData);
+  String postData = "{\"status\": \"" + currentStatus + "\"}";
+  client.post("/stands/" + String (DEVICE_ID) + "/status", "application/json", postData);
 
   // read the status code and body of the response
   int statusCode = client.responseStatusCode();
@@ -170,12 +197,7 @@ int post_data() {
   Serial.println(statusCode);
 
   String response = client.responseBody();
-  DynamicJsonDocument doc(2000);
-  deserializeJson(doc, response);
-  JsonObject obj = doc.as<JsonObject>();
+  Serial.println(response);
 
-  String keyValue = obj[String("data")][String("mykey")];
-  Serial.print("keyValue: ");
-  Serial.println(keyValue);
   return statusCode;
 }
